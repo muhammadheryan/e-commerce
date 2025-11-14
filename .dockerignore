@@ -1,0 +1,10 @@
+bin/
+*.exe
+*.log
+*.tmp
+vendor/
+.git
+.gitignore
+README.md
+.env
+.env.*

@@ -43,7 +43,7 @@ func (s *UserAppImpl) Register(ctx context.Context, req *model.RegisterRequest) 
 	// Check if user exists by email or phone
 	existingUser, err := s.userRepo.Get(ctx, &model.UserFilter{Email: req.Email})
 	if err != nil {
-		logger.Error("[Register] err userRepo.Get email", zap.Error(err))
+		logger.Error("[Register] err userRepo.Get email", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 
@@ -53,7 +53,7 @@ func (s *UserAppImpl) Register(ctx context.Context, req *model.RegisterRequest) 
 
 	existingUser, err = s.userRepo.Get(ctx, &model.UserFilter{Phone: req.Phone})
 	if err != nil {
-		logger.Error("[Register] err userRepo.Get phone", zap.Error(err))
+		logger.Error("[Register] err userRepo.Get phone", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 	if existingUser != nil {
@@ -63,7 +63,7 @@ func (s *UserAppImpl) Register(ctx context.Context, req *model.RegisterRequest) 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		logger.Error("[Register] err bcrypt.GenerateFromPassword", zap.Error(err))
+		logger.Error("[Register] err bcrypt.GenerateFromPassword", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 
@@ -78,7 +78,7 @@ func (s *UserAppImpl) Register(ctx context.Context, req *model.RegisterRequest) 
 	// Save to database
 	userEntity, err = s.userRepo.Create(ctx, userEntity)
 	if err != nil {
-		logger.Error("[Register] err userRepo.Create", zap.Error(err))
+		logger.Error("[Register] err userRepo.Create", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 
@@ -99,7 +99,7 @@ func (s *UserAppImpl) Login(ctx context.Context, req *model.LoginRequest) (*mode
 
 	user, err := s.userRepo.Get(ctx, filter)
 	if err != nil {
-		logger.Error("[Login] err userRepo.Get", zap.Error(err))
+		logger.Error("[Login] err userRepo.Get", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 
@@ -116,14 +116,14 @@ func (s *UserAppImpl) Login(ctx context.Context, req *model.LoginRequest) (*mode
 	// Generate JWT token
 	token, jti, err := s.generateJWT(user.ID)
 	if err != nil {
-		logger.Error("[Login] err generateJWT", zap.Error(err))
+		logger.Error("[Login] err generateJWT", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 
 	// Store session in Redis
 	err = s.redisRepo.SetSession(ctx, jti, user.ID, s.config.Auth.SessionExpTime)
 	if err != nil {
-		logger.Error("[Login] err SetSession", zap.Error(err))
+		logger.Error("[Login] err SetSession", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
 

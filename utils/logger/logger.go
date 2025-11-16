@@ -30,7 +30,6 @@ func Init(environment string) error {
 // Get returns the global logger
 func Get() *zap.Logger {
 	if globalLogger == nil {
-		// Fallback to a basic logger if not initialized
 		globalLogger, _ = zap.NewProduction()
 	}
 	return globalLogger

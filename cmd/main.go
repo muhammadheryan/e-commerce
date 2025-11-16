@@ -5,10 +5,12 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	productapp "github.com/muhammadheryan/e-commerce/application/product"
 	userapp "github.com/muhammadheryan/e-commerce/application/user"
 	"github.com/muhammadheryan/e-commerce/cmd/config"
 	redisclient "github.com/muhammadheryan/e-commerce/cmd/redis"
 	_ "github.com/muhammadheryan/e-commerce/docs"
+	productRepo "github.com/muhammadheryan/e-commerce/repository/product"
 	redisRepo "github.com/muhammadheryan/e-commerce/repository/redis"
 	userRepo "github.com/muhammadheryan/e-commerce/repository/user"
 	"github.com/muhammadheryan/e-commerce/transport"
@@ -19,11 +21,14 @@ import (
 // @title E-COMMERCE API
 // @version 1.0
 // @description E-COMMERCE API Documentation
+
 // @host localhost:8080
 // @BasePath /
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+// @description Enter the token with the `Bearer` prefix, e.g: "Bearer <your_token>"
 func main() {
 	// Load configuration from environment variables
 	cfg := config.Load()
@@ -59,11 +64,13 @@ func main() {
 	// Initialize repositories
 	UserRepo := userRepo.NewUserRepository(db)
 	RedisRepo := redisRepo.NewRepository()
+	ProductRepo := productRepo.NewProductRepository(db)
 
 	// Initialize application layers
 	UserApp := userapp.NewUserApp(cfg, UserRepo, RedisRepo)
+	ProductApp := productapp.NewProductApp(ProductRepo)
 
-	httpTransport := transport.NewTransport(UserApp)
+	httpTransport := transport.NewTransport(UserApp, ProductApp)
 
 	// Create HTTP server
 	server := &http.Server{

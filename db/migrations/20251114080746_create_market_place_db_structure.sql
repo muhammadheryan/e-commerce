@@ -72,7 +72,6 @@ CREATE TABLE stock_reservation (
     expires_at TIMESTAMP
 );
 
---idx (TBU)
 
 
 -- migrate:down

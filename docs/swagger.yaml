@@ -22,6 +22,49 @@ definitions:
       token:
         type: string
     type: object
+  model.ProductDetail:
+    properties:
+      available_stock:
+        type: integer
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      shop_id:
+        type: integer
+      shop_name:
+        type: string
+    type: object
+  model.ProductListItem:
+    properties:
+      available_stock:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      shop_name:
+        type: string
+    type: object
+  model.ProductListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ProductListItem'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total_count:
+        type: integer
+    type: object
   model.RegisterRequest:
     properties:
       email:
@@ -79,6 +122,65 @@ paths:
       summary: Login user
       tags:
       - Auth
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of products with shop and available stock
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProductListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - BearerAuth: []
+      summary: List products
+      tags:
+      - Product
+  /products/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get product detail by id
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProductDetail'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - BearerAuth: []
+      summary: Get product detail
+      tags:
+      - Product
   /register:
     post:
       consumes:
@@ -107,6 +209,7 @@ paths:
       - Auth
 securityDefinitions:
   BearerAuth:
+    description: 'Enter the token with the `Bearer` prefix, e.g: "Bearer <your_token>"'
     in: header
     name: Authorization
     type: apiKey

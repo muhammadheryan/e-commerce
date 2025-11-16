@@ -22,6 +22,32 @@ definitions:
       token:
         type: string
     type: object
+  model.OrderItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  model.OrderRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.OrderItemRequest'
+        type: array
+    required:
+    - items
+    type: object
+  model.OrderResponse:
+    properties:
+      expires_at:
+        type: string
+      order_id:
+        type: integer
+    type: object
   model.ProductDetail:
     properties:
       available_stock:
@@ -96,6 +122,92 @@ info:
   title: E-COMMERCE API
   version: "1.0"
 paths:
+  /api/order:
+    post:
+      consumes:
+      - application/json
+      description: Create a new order and reserve stock
+      parameters:
+      - description: Order Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - BearerAuth: []
+      summary: Create order
+      tags:
+      - Order
+  /api/order/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancel order and release reservations
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - BearerAuth: []
+      summary: Cancel order
+      tags:
+      - Order
+  /api/order/{id}/pay:
+    post:
+      consumes:
+      - application/json
+      description: Mark order as paid and adjust stock
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - BearerAuth: []
+      summary: Pay order
+      tags:
+      - Order
   /login:
     post:
       consumes:
@@ -122,7 +234,7 @@ paths:
       summary: Login user
       tags:
       - Auth
-  /products:
+  /product:
     get:
       consumes:
       - application/json
@@ -154,7 +266,7 @@ paths:
       summary: List products
       tags:
       - Product
-  /products/{id}:
+  /product/{id}:
     get:
       consumes:
       - application/json

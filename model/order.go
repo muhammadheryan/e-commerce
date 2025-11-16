@@ -12,8 +12,7 @@ type OrderItemRequest struct {
 }
 
 type OrderRequest struct {
-	UserID uint64
-	Items  []OrderItemRequest `json:"items" validate:"required,dive,required"`
+	Items []OrderItemRequest `json:"items" validate:"required,dive,required"`
 }
 
 type OrderResponse struct {

@@ -17,7 +17,7 @@ import (
 )
 
 type OrderApp interface {
-	CreateOrder(ctx context.Context, req *model.OrderRequest) (*model.OrderResponse, error)
+	CreateOrder(ctx context.Context, UserID uint64, req *model.OrderRequest) (*model.OrderResponse, error)
 	PayOrder(ctx context.Context, orderID uint64) error
 	CancelOrder(ctx context.Context, orderID uint64) error
 }
@@ -34,7 +34,7 @@ func NewOrderApp(config *config.Config, txRepo txrepo.TxRepository, orderRepo or
 	return &orderAppImpl{config: config, txRepo: txRepo, orderRepo: orderRepo, warehouseRepo: warehouseRepo, publisher: publisher}
 }
 
-func (s *orderAppImpl) CreateOrder(ctx context.Context, req *model.OrderRequest) (*model.OrderResponse, error) {
+func (s *orderAppImpl) CreateOrder(ctx context.Context, UserID uint64, req *model.OrderRequest) (*model.OrderResponse, error) {
 	if len(req.Items) == 0 {
 		return nil, errors.SetCustomError(constant.ErrInvalidRequest)
 	}
@@ -44,8 +44,11 @@ func (s *orderAppImpl) CreateOrder(ctx context.Context, req *model.OrderRequest)
 		logger.Error("[CreateOrder] begin tx", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
+	committed := false
 	defer func() {
-		_ = s.txRepo.RollbackTx(tx)
+		if !committed {
+			_ = s.txRepo.RollbackTx(tx)
+		}
 	}()
 
 	// validate stock for each item
@@ -64,7 +67,7 @@ func (s *orderAppImpl) CreateOrder(ctx context.Context, req *model.OrderRequest)
 	// insert order
 	expiresAt := time.Now().Add(s.config.Order.OrderExpiration)
 	orderID, err := s.orderRepo.InsertOrderTx(ctx, tx, &model.InsertOrderTxItem{
-		UserID:    req.UserID,
+		UserID:    UserID,
 		Status:    constant.OrderStatusPending,
 		ExpiresAT: expiresAt,
 	})
@@ -100,11 +103,11 @@ func (s *orderAppImpl) CreateOrder(ctx context.Context, req *model.OrderRequest)
 		logger.Error("[CreateOrder] commit tx", zap.String("error", err.Error()))
 		return nil, errors.SetCustomError(constant.ErrInternal)
 	}
-
+	committed = true
 	// Publish order expiration message to RabbitMQ
 	msg := rabbitmq.OrderExpirationMessage{
 		OrderID:   orderID,
-		UserID:    req.UserID,
+		UserID:    UserID,
 		ExpiresAt: expiresAt,
 	}
 	if err := s.publisher.PublishOrderExpiration(msg); err != nil {
@@ -123,7 +126,12 @@ func (s *orderAppImpl) PayOrder(ctx context.Context, orderID uint64) error {
 		logger.Error("[PayOrder] begin tx", zap.String("error", err.Error()))
 		return errors.SetCustomError(constant.ErrInternal)
 	}
-	defer func() { _ = s.txRepo.RollbackTx(tx) }()
+	committed := false
+	defer func() {
+		if !committed {
+			_ = s.txRepo.RollbackTx(tx)
+		}
+	}()
 
 	// get order detail and validate status and ownership
 	orderDetail, err := s.orderRepo.GetOrderDetailTx(ctx, tx, orderID)
@@ -153,6 +161,7 @@ func (s *orderAppImpl) PayOrder(ctx context.Context, orderID uint64) error {
 		logger.Error("[PayOrder] commit tx", zap.String("error", err.Error()))
 		return errors.SetCustomError(constant.ErrInternal)
 	}
+	committed = true
 	return nil
 }
 
@@ -162,7 +171,12 @@ func (s *orderAppImpl) CancelOrder(ctx context.Context, orderID uint64) error {
 		logger.Error("[CancelOrder] begin tx", zap.String("error", err.Error()))
 		return errors.SetCustomError(constant.ErrInternal)
 	}
-	defer func() { _ = s.txRepo.RollbackTx(tx) }()
+	committed := false
+	defer func() {
+		if !committed {
+			_ = s.txRepo.RollbackTx(tx)
+		}
+	}()
 
 	// get order detail and validate status and ownership
 	orderDetail, err := s.orderRepo.GetOrderDetailTx(ctx, tx, orderID)
@@ -192,5 +206,6 @@ func (s *orderAppImpl) CancelOrder(ctx context.Context, orderID uint64) error {
 		logger.Error("[CancelOrder] commit tx", zap.String("error", err.Error()))
 		return errors.SetCustomError(constant.ErrInternal)
 	}
+	committed = true
 	return nil
 }

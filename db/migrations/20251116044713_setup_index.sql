@@ -12,7 +12,7 @@ CREATE INDEX idx_product_name ON product(name);
 
 CREATE INDEX idx_ws_product ON warehouse_stock(product_id);
 
-CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_orders_user ON `order`(user_id);
 
 CREATE INDEX idx_order_item_order ON order_item(order_id);
 

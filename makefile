@@ -1,7 +1,7 @@
-# Makefile untuk URL Shortener Project
+# Makefile 
 
 # Variables
-APP_NAME=url-shortener
+APP_NAME=e-commerce
 BIN_DIR=bin
 MAIN_FILE=./cmd/main.go
 

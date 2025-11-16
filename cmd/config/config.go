@@ -153,6 +153,7 @@ func getEnvAsInt(key string, fallback int) int {
 }
 
 // GetDSN returns database connection string for Go applications
+// Includes timeout parameters to handle local-to-docker network latency
 func (c *Config) GetDSN() string {
 	return c.Database.User + ":" + c.Database.Password + "@tcp(" + c.Database.Host + ":" + strconv.Itoa(c.Database.Port) + ")/" + c.Database.Name + "?parseTime=true"
 }

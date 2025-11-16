@@ -32,7 +32,7 @@ services:
       retries: 5
 
   rabbitmq-ecommerce:
-    image: rabbitmq:3.12-management
+    image: masstransit/rabbitmq
     container_name: rabbitmq-ecommerce
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
@@ -54,15 +54,13 @@ services:
     depends_on:
       mysql-ecommerce:
         condition: service_healthy
-    command: >
-      sh -c "
-        echo 'Waiting for MySQL...' &&
-        dbmate --wait --url mysql://root:${DB_PASSWORD}@mysql-ecommerce:3306/${DB_NAME} up
-      "
     environment:
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@mysql-ecommerce:3306/${DB_NAME}"
     volumes:
       - ./db/migrations:/db/migrations
+    entrypoint: ["dbmate"]
+    command: ["--wait", "up"]
+
 
   app-ecommerce:
     build: .
@@ -77,7 +75,7 @@ services:
       dbmate-ecommerce:
         condition: service_started
     env_file:
-      - .env-local-docker
+      - ./.env-local-docker
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
     command: ["/e-commerce"]

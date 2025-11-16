@@ -18,7 +18,7 @@ func AuthMiddleware(userApp user.UserApp) mux.MiddlewareFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Public paths
 			path := r.URL.Path
-			if isPublicPath(path) || userApp == nil {
+			if isPublicPath(path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -47,7 +47,7 @@ func AuthMiddleware(userApp user.UserApp) mux.MiddlewareFunc {
 
 // isPublicPath defines which endpoints are public (no auth required)
 func isPublicPath(path string) bool {
-	if strings.HasPrefix(path, "/swagger/") {
+	if strings.HasPrefix(path, "/swagger/") || strings.HasPrefix(path, "/internal/") {
 		return true
 	}
 	if path == "/login" || path == "/register" {

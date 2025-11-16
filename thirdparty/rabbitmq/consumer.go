@@ -143,7 +143,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 }
 
 func (c *Consumer) callCancelOrderAPI(orderID, userID uint64) error {
-	url := fmt.Sprintf("%s/api/orders/%d/cancel", c.apiURL, orderID)
+	url := fmt.Sprintf("%s/internal/order/%d/cancel", c.apiURL, orderID)
 
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {

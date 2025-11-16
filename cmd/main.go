@@ -49,6 +49,7 @@ func main() {
 	}
 	defer logger.Close()
 
+	logger.Info(cfg.ProjectName)
 	logger.Info("Starting server", zap.String("env", cfg.Environment))
 
 	// Connect to database
@@ -99,7 +100,7 @@ func main() {
 		cfg.RabbitMQ.User,
 		cfg.RabbitMQ.Password,
 		"http://localhost:"+cfg.Server.Port,
-		cfg.RabbitMQ.User,
+		cfg.InternalAPIKey,
 	)
 	if err != nil {
 		logger.Fatal("failed to connect rabbitmq consumer", zap.Error(err))

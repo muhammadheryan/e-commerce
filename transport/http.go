@@ -257,9 +257,8 @@ func (s *RestHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		writeError(w, errors.SetCustomError(constant.ErrUnauthorize))
 		return
 	}
-	req.UserID = userID
 
-	res, err := s.OrderApp.CreateOrder(ctx, &req)
+	res, err := s.OrderApp.CreateOrder(ctx, userID, &req)
 	if err != nil {
 		writeError(w, err)
 		return

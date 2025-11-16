@@ -1,5 +1,5 @@
 -- migrate:up
-CREATE TABLE user (
+CREATE TABLE `user` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
     email VARCHAR(100) UNIQUE,
@@ -9,14 +9,14 @@ CREATE TABLE user (
     updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE shop (
+CREATE TABLE `shop` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE warehouse (
+CREATE TABLE `warehouse` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     shop_id BIGINT NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE warehouse (
     updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE product (
+CREATE TABLE `product` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     shop_id BIGINT NOT NULL,
     name VARCHAR(100) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE product (
     updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE warehouse_stock (
+CREATE TABLE `warehouse_stock` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     warehouse_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE warehouse_stock (
     updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE order (
+CREATE TABLE `order` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     status TINYINT NOT NULL DEFAULT 1 COMMENT '1: PENDING, 2: PAID, 3: CANCELLED, 4: EXPIRED',
@@ -54,7 +54,7 @@ CREATE TABLE order (
     expires_at TIMESTAMP NULL
 );
 
-CREATE TABLE order_item (
+CREATE TABLE `order_item` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE order_item (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE stock_reservation (
+CREATE TABLE `stock_reservation` (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT NOT NULL,
     warehouse_id BIGINT NOT NULL,

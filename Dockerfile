@@ -10,11 +10,11 @@ RUN go mod download
 
 COPY . ./
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /url-shortener ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /e-commerce ./cmd/main.go
 
 # Final stage
 FROM alpine:3.18
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /url-shortener /url-shortener
+COPY --from=builder /e-commerce /e-commerce
 EXPOSE 8080
-ENTRYPOINT ["/url-shortener"]
+ENTRYPOINT ["/e-commerce"]

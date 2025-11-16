@@ -1,18 +1,27 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	orderapp "github.com/muhammadheryan/e-commerce/application/order"
 	productapp "github.com/muhammadheryan/e-commerce/application/product"
 	userapp "github.com/muhammadheryan/e-commerce/application/user"
 	"github.com/muhammadheryan/e-commerce/cmd/config"
 	redisclient "github.com/muhammadheryan/e-commerce/cmd/redis"
 	_ "github.com/muhammadheryan/e-commerce/docs"
+	orderRepo "github.com/muhammadheryan/e-commerce/repository/order"
 	productRepo "github.com/muhammadheryan/e-commerce/repository/product"
 	redisRepo "github.com/muhammadheryan/e-commerce/repository/redis"
+	txRepo "github.com/muhammadheryan/e-commerce/repository/tx"
 	userRepo "github.com/muhammadheryan/e-commerce/repository/user"
+	warehouse "github.com/muhammadheryan/e-commerce/repository/warehouse"
+	"github.com/muhammadheryan/e-commerce/thirdparty/rabbitmq"
 	"github.com/muhammadheryan/e-commerce/transport"
 	"github.com/muhammadheryan/e-commerce/utils/logger"
 	"go.uber.org/zap"
@@ -65,12 +74,54 @@ func main() {
 	UserRepo := userRepo.NewUserRepository(db)
 	RedisRepo := redisRepo.NewRepository()
 	ProductRepo := productRepo.NewProductRepository(db)
+	OrderRepo := orderRepo.NewOrderRepository(db)
+	txRepo := txRepo.NewTxRepository(db)
+	warehouseRepo := warehouse.NewWarehouseRepository(db)
+
+	// Initialize RabbitMQ publisher
+	publisher, err := rabbitmq.NewPublisher(
+		cfg.RabbitMQ.Host,
+		cfg.RabbitMQ.Port,
+		cfg.RabbitMQ.User,
+		cfg.RabbitMQ.Password,
+	)
+	if err != nil {
+		logger.Fatal("failed to connect rabbitmq publisher", zap.Error(err))
+	}
+	defer func() {
+		_ = publisher.Close()
+	}()
+
+	// Initialize RabbitMQ consumer
+	consumer, err := rabbitmq.NewConsumer(
+		cfg.RabbitMQ.Host,
+		cfg.RabbitMQ.Port,
+		cfg.RabbitMQ.User,
+		cfg.RabbitMQ.Password,
+		"http://localhost:"+cfg.Server.Port,
+		cfg.RabbitMQ.User,
+	)
+	if err != nil {
+		logger.Fatal("failed to connect rabbitmq consumer", zap.Error(err))
+	}
+	defer func() {
+		_ = consumer.Close()
+	}()
+
+	// Start consumer in background
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := consumer.Start(ctx); err != nil {
+		logger.Fatal("failed to start rabbitmq consumer", zap.Error(err))
+	}
 
 	// Initialize application layers
 	UserApp := userapp.NewUserApp(cfg, UserRepo, RedisRepo)
 	ProductApp := productapp.NewProductApp(ProductRepo)
+	OrderApp := orderapp.NewOrderApp(cfg, txRepo, OrderRepo, warehouseRepo, publisher)
 
-	httpTransport := transport.NewTransport(UserApp, ProductApp)
+	httpTransport := transport.NewTransport(UserApp, ProductApp, OrderApp, cfg.InternalAPIKey)
 
 	// Create HTTP server
 	server := &http.Server{
@@ -81,9 +132,21 @@ func main() {
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
+	// Graceful shutdown handling
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+		logger.Info("Shutting down server...")
+		cancel()
+		if err := server.Close(); err != nil {
+			logger.Error("Server close error", zap.Error(err))
+		}
+	}()
+
 	logger.Info("HTTP server running", zap.String("port", cfg.Server.Port))
 	err = server.ListenAndServe()
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		logger.Fatal("failed server", zap.Error(err))
 	}
 }

@@ -24,7 +24,25 @@ type Config struct {
 	// Auth configuration
 	Auth AuthConfig
 
-	ProjectName string
+	// Order related config
+	Order OrderConfig
+
+	// RabbitMQ configuration
+	RabbitMQ RabbitMQConfig
+
+	ProjectName    string
+	InternalAPIKey string
+}
+
+type OrderConfig struct {
+	OrderExpiration time.Duration
+}
+
+type RabbitMQConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
 }
 
 // DatabaseConfig holds database configuration
@@ -100,8 +118,18 @@ func Load() *Config {
 			JWTExpiration:  time.Duration(getEnvAsInt("JWT_EXPIRATION", 86400)) * time.Second,
 			SessionExpTime: time.Duration(getEnvAsInt("SESSION_EXPIRATION", 86400)) * time.Second,
 		},
-		Environment: getEnv("ENV", "development"),
-		ProjectName: getEnv("PROJECT_NAME", "project-name-test"),
+		Order: OrderConfig{
+			OrderExpiration: time.Duration(getEnvAsInt("ORDER_EXPIRES_SECONDS", 3600)) * time.Second,
+		},
+		RabbitMQ: RabbitMQConfig{
+			Host:     getEnv("RABBITMQ_HOST", "127.0.0.1"),
+			Port:     getEnvAsInt("RABBITMQ_PORT", 5672),
+			User:     getEnv("RABBITMQ_USER", "guest"),
+			Password: getEnv("RABBITMQ_PASSWORD", "guest"),
+		},
+		Environment:    getEnv("ENV", "development"),
+		ProjectName:    getEnv("PROJECT_NAME", "project-name-test"),
+		InternalAPIKey: getEnv("INTERNAL_API_KEY", "internal-key"),
 	}
 }
 

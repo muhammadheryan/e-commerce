@@ -105,13 +105,15 @@ func (s *orderAppImpl) CreateOrder(ctx context.Context, UserID uint64, req *mode
 	}
 	committed = true
 	// Publish order expiration message to RabbitMQ
-	msg := rabbitmq.OrderExpirationMessage{
-		OrderID:   orderID,
-		UserID:    UserID,
-		ExpiresAt: expiresAt,
-	}
-	if err := s.publisher.PublishOrderExpiration(msg); err != nil {
-		logger.Error("[CreateOrder] publish order expiration", zap.String("error", err.Error()))
+	if s.publisher != nil {
+		msg := rabbitmq.OrderExpirationMessage{
+			OrderID:   orderID,
+			UserID:    UserID,
+			ExpiresAt: expiresAt,
+		}
+		if err := s.publisher.PublishOrderExpiration(msg); err != nil {
+			logger.Error("[CreateOrder] publish order expiration", zap.String("error", err.Error()))
+		}
 	}
 
 	return &model.OrderResponse{

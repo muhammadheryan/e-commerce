@@ -122,7 +122,33 @@ info:
   title: E-COMMERCE API
   version: "1.0"
 paths:
-  /api/order:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Login with email or phone and receive JWT token
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      summary: Login user
+      tags:
+      - Auth
+  /order:
     post:
       consumes:
       - application/json
@@ -150,7 +176,7 @@ paths:
       summary: Create order
       tags:
       - Order
-  /api/order/{id}/cancel:
+  /order/{id}/cancel:
     post:
       consumes:
       - application/json
@@ -179,7 +205,7 @@ paths:
       summary: Cancel order
       tags:
       - Order
-  /api/order/{id}/pay:
+  /order/{id}/pay:
     post:
       consumes:
       - application/json
@@ -208,32 +234,6 @@ paths:
       summary: Pay order
       tags:
       - Order
-  /login:
-    post:
-      consumes:
-      - application/json
-      description: Login with email or phone and receive JWT token
-      parameters:
-      - description: Login Request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.LoginResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/errors.CustomError'
-      summary: Login user
-      tags:
-      - Auth
   /product:
     get:
       consumes:

@@ -8,7 +8,7 @@ import (
 )
 
 // Repository defines methods for interacting with Redis key-values
-type Repository interface {
+type RedisRepository interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value interface{}) error
 	SetWithTTL(ctx context.Context, key, value string, ttl time.Duration) error
@@ -23,7 +23,7 @@ type redis struct {
 }
 
 // NewRepository returns a Redis Repository implementation
-func NewRepository() Repository {
+func NewRedisRepository() RedisRepository {
 	return &redis{}
 }
 

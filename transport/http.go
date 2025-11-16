@@ -45,9 +45,9 @@ func NewTransport(UserApp userapp.UserApp, ProductApp prodapp.ProductApp, OrderA
 	mux.HandleFunc("/product/{id}", rh.GetProduct).Methods(http.MethodGet)
 
 	// Order
-	mux.HandleFunc("/api/order", rh.CreateOrder).Methods(http.MethodPost)
-	mux.HandleFunc("/api/order/{id}/pay", rh.PayOrder).Methods(http.MethodPost)
-	mux.HandleFunc("/api/order/{id}/cancel", rh.CancelOrder).Methods(http.MethodPost)
+	mux.HandleFunc("/order", rh.CreateOrder).Methods(http.MethodPost)
+	mux.HandleFunc("/order/{id}/pay", rh.PayOrder).Methods(http.MethodPost)
+	mux.HandleFunc("/order/{id}/cancel", rh.CancelOrder).Methods(http.MethodPost)
 
 	// middleware
 	mux.Use(LoggingMiddleware())
@@ -237,7 +237,7 @@ func (s *RestHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.OrderResponse
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /api/order [post]
+// @Router /order [post]
 func (s *RestHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -276,7 +276,7 @@ func (s *RestHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /api/order/{id}/pay [post]
+// @Router /order/{id}/pay [post]
 func (s *RestHandler) PayOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if s.OrderApp == nil {
@@ -316,7 +316,7 @@ func (s *RestHandler) PayOrder(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /api/order/{id}/cancel [post]
+// @Router /order/{id}/cancel [post]
 func (s *RestHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if s.OrderApp == nil {

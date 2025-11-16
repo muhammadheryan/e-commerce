@@ -28,10 +28,10 @@ type UserApp interface {
 type UserAppImpl struct {
 	config    *config.Config
 	userRepo  userrepo.UserRepository
-	redisRepo redisrepo.Repository
+	redisRepo redisrepo.RedisRepository
 }
 
-func NewUserApp(config *config.Config, userRepo userrepo.UserRepository, redisRepo redisrepo.Repository) UserApp {
+func NewUserApp(config *config.Config, userRepo userrepo.UserRepository, redisRepo redisrepo.RedisRepository) UserApp {
 	return &UserAppImpl{
 		config:    config,
 		userRepo:  userRepo,

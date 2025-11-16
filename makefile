@@ -118,36 +118,6 @@ mocks-url: ## Generate mock untuk URLRepository saja
 	mockery --name URLRepository --dir repository/url --output mocks/repository/url --outpkg mocks --case underscore
 	@echo "URLRepository mock generated!"
 
-# Generate mocks for all layers
-.PHONY: mocks-everything
-mocks-everything: ## Generate mocks untuk semua layer (repository, service, external)
-	@echo "Generating mocks for all layers..."
-	@if not exist mocks mkdir mocks
-	@echo "Generating repository mocks..."
-	@mockery --all --dir repository/url --output mocks/repository/url --outpkg mocks --case underscore
-	@echo "All layer mocks generated!"
-
-## ---------- ## DB Commands ## ---------- #
-# Database migration
-.PHONY: migrate-up
-migrate-up: ## Run database migrations up
-	@echo "Running migrations up..."
-	@if [ -f "db/migrations/*.sql" ]; then \
-		echo "Migration files found"; \
-	else \
-		echo "No migration files found in db/migrations/"; \
-	fi
-
-.PHONY: migrate-down
-migrate-down: ## Run database migrations down
-	@echo "Running migrations down..."
-	@echo "Migration down not implemented yet"
-
-.PHONY: migrate-status
-migrate-status: ## Check migration status
-	@echo "Migration status:"
-	@echo "Migration status not implemented yet"
-
 
 ## ---------- ## workflow Commands ## ---------- #
 # Development setup

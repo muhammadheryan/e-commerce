@@ -73,7 +73,7 @@ func main() {
 
 	// Initialize repositories
 	UserRepo := userRepo.NewUserRepository(db)
-	RedisRepo := redisRepo.NewRepository()
+	RedisRepo := redisRepo.NewRedisRepository()
 	ProductRepo := productRepo.NewProductRepository(db)
 	OrderRepo := orderRepo.NewOrderRepository(db)
 	txRepo := txRepo.NewTxRepository(db)

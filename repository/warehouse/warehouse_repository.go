@@ -18,6 +18,11 @@ type WarehouseRepository interface {
 	GetReservationsByOrderTx(ctx context.Context, tx *sqlx.Tx, orderID uint64) ([]model.Reservation, error)
 	CommitReservationsTx(ctx context.Context, tx *sqlx.Tx, orderID uint64) error
 	ReleaseReservationsTx(ctx context.Context, tx *sqlx.Tx, orderID uint64) error
+	GetWarehouseByID(ctx context.Context, warehouseID uint64) (*model.WarehouseEntity, error)
+	CheckReservedStock(ctx context.Context, warehouseID uint64) (int64, error)
+	UpdateWarehouseStatus(ctx context.Context, warehouseID uint64, status constant.WarehouseStatus) error
+	GetWarehouseStock(ctx context.Context, warehouseID uint64, productID uint64) (*model.WarehouseStock, error)
+	TransferStockTx(ctx context.Context, tx *sqlx.Tx, req *model.TransferStockRequest) error
 }
 
 type SQL struct {
@@ -159,5 +164,126 @@ func (r *SQL) ReleaseReservationsTx(ctx context.Context, tx *sqlx.Tx, orderID ui
 			return err
 		}
 	}
+	return nil
+}
+
+func (r *SQL) GetWarehouseByID(ctx context.Context, warehouseID uint64) (*model.WarehouseEntity, error) {
+	var warehouse model.WarehouseEntity
+	query := "SELECT id, shop_id, name, status, created_at, updated_at FROM warehouse WHERE id = ?"
+	err := r.conn.QueryRowxContext(ctx, query, warehouseID).StructScan(&warehouse)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		logger.Error("[GetWarehouseByID] query failed", zap.String("error", err.Error()), zap.Uint64("warehouse_id", warehouseID))
+		return nil, err
+	}
+	return &warehouse, nil
+}
+
+func (r *SQL) CheckReservedStock(ctx context.Context, warehouseID uint64) (int64, error) {
+	var total sql.NullInt64
+	query := "SELECT COALESCE(SUM(reserved), 0) as total FROM warehouse_stock WHERE warehouse_id = ?"
+	err := r.conn.GetContext(ctx, &total, query, warehouseID)
+	if err != nil {
+		logger.Error("[CheckReservedStock] query failed", zap.String("error", err.Error()), zap.Uint64("warehouse_id", warehouseID))
+		return 0, err
+	}
+	if !total.Valid {
+		return 0, nil
+	}
+	return total.Int64, nil
+}
+
+func (r *SQL) UpdateWarehouseStatus(ctx context.Context, warehouseID uint64, status constant.WarehouseStatus) error {
+	query := "UPDATE warehouse SET status = ?, updated_at = NOW() WHERE id = ?"
+	result, err := r.conn.ExecContext(ctx, query, status, warehouseID)
+	if err != nil {
+		logger.Error("[UpdateWarehouseStatus] update failed", zap.String("error", err.Error()), zap.Uint64("warehouse_id", warehouseID), zap.Int("status", int(status)))
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *SQL) GetWarehouseStock(ctx context.Context, warehouseID uint64, productID uint64) (*model.WarehouseStock, error) {
+	var stock model.WarehouseStock
+	query := "SELECT id, warehouse_id, product_id, stock, reserved FROM warehouse_stock WHERE warehouse_id = ? AND product_id = ?"
+	err := r.conn.QueryRowxContext(ctx, query, warehouseID, productID).StructScan(&stock)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		logger.Error("[GetWarehouseStock] query failed", zap.String("error", err.Error()), zap.Uint64("warehouse_id", warehouseID), zap.Uint64("product_id", productID))
+		return nil, err
+	}
+	return &stock, nil
+}
+
+func (r *SQL) TransferStockTx(ctx context.Context, tx *sqlx.Tx, req *model.TransferStockRequest) error {
+	// Get source warehouse stock with lock
+	var fromStock model.WarehouseStock
+	query := "SELECT id, warehouse_id, product_id, stock, reserved FROM warehouse_stock WHERE warehouse_id = ? AND product_id = ? FOR UPDATE"
+	err := tx.QueryRowxContext(ctx, query, req.FromWarehouseID, req.ProductID).StructScan(&fromStock)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.SetCustomError(constant.ErrNotFound)
+		}
+		logger.Error("[TransferStockTx] get from stock failed", zap.String("error", err.Error()))
+		return err
+	}
+
+	// Check available stock (stock - reserved)
+	available := fromStock.Stock - fromStock.Reserved
+	if available < int64(req.Quantity) {
+		return errors.SetCustomError(constant.ErrInsufficientStock)
+	}
+
+	// Decrease stock from source warehouse
+	_, err = tx.ExecContext(ctx, "UPDATE warehouse_stock SET stock = stock - ? WHERE id = ?", req.Quantity, fromStock.ID)
+	if err != nil {
+		logger.Error("[TransferStockTx] decrease from stock failed", zap.String("error", err.Error()))
+		return err
+	}
+
+	// Get or create destination warehouse stock
+	var toStock model.WarehouseStock
+	err = tx.QueryRowxContext(ctx, query, req.ToWarehouseID, req.ProductID).StructScan(&toStock)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Error("[TransferStockTx] get to stock failed", zap.String("error", err.Error()))
+		return err
+	}
+
+	if err == sql.ErrNoRows {
+		// Create new warehouse_stock record
+		result, err := tx.ExecContext(ctx, "INSERT INTO warehouse_stock (warehouse_id, product_id, stock, reserved) VALUES (?, ?, ?, 0)", req.ToWarehouseID, req.ProductID, req.Quantity)
+		if err != nil {
+			logger.Error("[TransferStockTx] insert to stock failed", zap.String("error", err.Error()))
+			return err
+		}
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return err
+		}
+		toStock.ID = uint64(lastID)
+		toStock.WarehouseID = req.ToWarehouseID
+		toStock.ProductID = req.ProductID
+		toStock.Stock = int64(req.Quantity)
+		toStock.Reserved = 0
+	} else {
+		// Increase stock in destination warehouse
+		_, err = tx.ExecContext(ctx, "UPDATE warehouse_stock SET stock = stock + ? WHERE id = ?", req.Quantity, toStock.ID)
+		if err != nil {
+			logger.Error("[TransferStockTx] increase to stock failed", zap.String("error", err.Error()))
+			return err
+		}
+	}
+
 	return nil
 }

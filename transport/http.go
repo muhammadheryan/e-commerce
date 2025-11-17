@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	muxR "github.com/gorilla/mux"
 	orderapp "github.com/muhammadheryan/e-commerce/application/order"
 	prodapp "github.com/muhammadheryan/e-commerce/application/product"
 	userapp "github.com/muhammadheryan/e-commerce/application/user"
+	warehouseapp "github.com/muhammadheryan/e-commerce/application/warehouse"
 	"github.com/muhammadheryan/e-commerce/constant"
 	"github.com/muhammadheryan/e-commerce/model"
 	utilsContext "github.com/muhammadheryan/e-commerce/utils/context"
@@ -19,68 +19,55 @@ import (
 )
 
 type RestHandler struct {
-	UserApp    userapp.UserApp
-	ProductApp prodapp.ProductApp
-	OrderApp   orderapp.OrderApp
+	UserApp      userapp.UserApp
+	ProductApp   prodapp.ProductApp
+	OrderApp     orderapp.OrderApp
+	WarehouseApp warehouseapp.WarehouseApp
 }
 
-func NewTransport(UserApp userapp.UserApp, ProductApp prodapp.ProductApp, OrderApp orderapp.OrderApp, internalAPIKey string) http.Handler {
-	mux := muxR.NewRouter()
+func NewTransport(UserApp userapp.UserApp, ProductApp prodapp.ProductApp, OrderApp orderapp.OrderApp, WarehouseApp warehouseapp.WarehouseApp, internalAPIKey string) http.Handler {
+	router := mux.NewRouter()
 
 	rh := &RestHandler{
-		UserApp:    UserApp,
-		ProductApp: ProductApp,
-		OrderApp:   OrderApp,
+		UserApp:      UserApp,
+		ProductApp:   ProductApp,
+		OrderApp:     OrderApp,
+		WarehouseApp: WarehouseApp,
 	}
 
 	// Swagger UI
-	mux.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	// Public routes
-	mux.HandleFunc("/register", rh.Register).Methods(http.MethodPost)
-	mux.HandleFunc("/login", rh.Login).Methods(http.MethodPost)
+	router.HandleFunc("/public/v1/register", rh.Register).Methods(http.MethodPost)
+	router.HandleFunc("/public/v1/login", rh.Login).Methods(http.MethodPost)
 
 	// Product routes
-	mux.HandleFunc("/product", rh.GetProducts).Methods(http.MethodGet)
-	mux.HandleFunc("/product/{id}", rh.GetProduct).Methods(http.MethodGet)
+	router.HandleFunc("/public/v1/product", rh.GetProducts).Methods(http.MethodGet)
+	router.HandleFunc("/public/v1//product/{id}", rh.GetProduct).Methods(http.MethodGet)
 
 	// Order
-	mux.HandleFunc("/order", rh.CreateOrder).Methods(http.MethodPost)
-	mux.HandleFunc("/order/{id}/pay", rh.PayOrder).Methods(http.MethodPost)
-	mux.HandleFunc("/order/{id}/cancel", rh.CancelOrder).Methods(http.MethodPost)
+	router.HandleFunc("/public/v1/order", rh.CreateOrder).Methods(http.MethodPost)
+	router.HandleFunc("/public/v1/order/{id}/pay", rh.PayOrder).Methods(http.MethodPost)
+	router.HandleFunc("/public/v1/order/{id}/cancel", rh.CancelOrder).Methods(http.MethodPost)
 
 	// middleware
-	mux.Use(LoggingMiddleware())
-	mux.Use(AuthMiddleware(UserApp))
+	router.Use(LoggingMiddleware())
+	router.Use(AuthMiddleware(UserApp))
 
 	// Internal route for MQ cancel (no auth, just API key)
-	internal := muxR.NewRouter()
-	internal.HandleFunc("/internal/order/{id}/cancel", rh.InternalCancelOrder).Methods(http.MethodPost)
+	internal := mux.NewRouter()
+	internal.HandleFunc("/internal/v1/order/{id}/cancel", rh.InternalCancelOrder).Methods(http.MethodPost)
+
+	// Warehouse internal routes
+	internal.HandleFunc("/internal/v1/warehouses/{id}/activate", rh.ActivateWarehouse).Methods(http.MethodPatch)
+	internal.HandleFunc("/internal/v1/warehouses/{id}/deactivate", rh.DeactivateWarehouse).Methods(http.MethodPatch)
+	internal.HandleFunc("/internal/v1/warehouses/transfer", rh.TransferStock).Methods(http.MethodPost)
+
 	internal.Use(InternalMiddleware(internalAPIKey))
-	mux.PathPrefix("/internal/").Handler(internal)
+	router.PathPrefix("/internal/").Handler(internal)
 
-	return mux
-}
-
-// InternalCancelOrder handles MQ-triggered cancel with API key only
-func (s *RestHandler) InternalCancelOrder(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	if idStr == "" {
-		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
-		return
-	}
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
-		return
-	}
-	if err := s.OrderApp.CancelOrder(ctx, id); err != nil {
-		writeError(w, err)
-		return
-	}
-	writeSuccess(w, map[string]string{"status": "cancelled"})
+	return router
 }
 
 // Register handler
@@ -92,7 +79,7 @@ func (s *RestHandler) InternalCancelOrder(w http.ResponseWriter, r *http.Request
 // @Param request body model.RegisterRequest true "Register Request"
 // @Success 200 {object} model.RegisterResponse
 // @Failure 400 {object} errors.CustomError
-// @Router /register [post]
+// @Router /public/v1/register [post]
 func (s *RestHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -130,7 +117,7 @@ func (s *RestHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Param request body model.LoginRequest true "Login Request"
 // @Success 200 {object} model.LoginResponse
 // @Failure 400 {object} errors.CustomError
-// @Router /login [post]
+// @Router /public/v1/login [post]
 func (s *RestHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -169,7 +156,7 @@ func (s *RestHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.ProductListResponse
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /product [get]
+// @Router /public/v1/product [get]
 func (s *RestHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -204,7 +191,7 @@ func (s *RestHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.ProductDetail
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /product/{id} [get]
+// @Router /public/v1/product/{id} [get]
 func (s *RestHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -237,7 +224,7 @@ func (s *RestHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.OrderResponse
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /order [post]
+// @Router /public/v1/order [post]
 func (s *RestHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -276,7 +263,7 @@ func (s *RestHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /order/{id}/pay [post]
+// @Router /public/v1/order/{id}/pay [post]
 func (s *RestHandler) PayOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if s.OrderApp == nil {
@@ -316,7 +303,7 @@ func (s *RestHandler) PayOrder(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} errors.CustomError
 // @Security BearerAuth
-// @Router /order/{id}/cancel [post]
+// @Router /public/v1/order/{id}/cancel [post]
 func (s *RestHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if s.OrderApp == nil {
@@ -345,4 +332,131 @@ func (s *RestHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeSuccess(w, map[string]string{"status": "cancelled"})
+}
+
+// InternalCancelOrder handles MQ-triggered cancel with API key only
+func (s *RestHandler) InternalCancelOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	if err := s.OrderApp.CancelOrder(ctx, id); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, map[string]string{"status": "cancelled"})
+}
+
+// @Summary Activate warehouse
+// @Description Activate a warehouse
+// @Tags Warehouse
+// @Accept json
+// @Produce json
+// @Param id path int true "Warehouse ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} errors.CustomError
+// @Security InternalAPIKey
+// @Router /internal/v1/warehouses/{id}/activate [patch]
+func (s *RestHandler) ActivateWarehouse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	if s.WarehouseApp == nil {
+		writeError(w, errors.SetCustomError(constant.ErrInternal))
+		return
+	}
+	if err := s.WarehouseApp.ActivateWarehouse(ctx, id); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, map[string]string{"status": "activated"})
+}
+
+// @Summary Deactivate warehouse
+// @Description Deactivate a warehouse. Cannot deactivate if there's reserved stock
+// @Tags Warehouse
+// @Accept json
+// @Produce json
+// @Param id path int true "Warehouse ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} errors.CustomError
+// @Security InternalAPIKey
+// @Router /internal/v1/warehouses/{id}/deactivate [patch]
+func (s *RestHandler) DeactivateWarehouse(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	if idStr == "" {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	if s.WarehouseApp == nil {
+		writeError(w, errors.SetCustomError(constant.ErrInternal))
+		return
+	}
+	if err := s.WarehouseApp.DeactivateWarehouse(ctx, id); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, map[string]string{"status": "deactivated"})
+}
+
+// @Summary Transfer stock between warehouses
+// @Description Transfer stock from one warehouse to another. Only available stock (stock - reserved) can be transferred
+// @Tags Warehouse
+// @Accept json
+// @Produce json
+// @Param request body model.TransferStockHTTPRequest true "Transfer Stock Request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} errors.CustomError
+// @Security InternalAPIKey
+// @Router /internal/v1/warehouses/transfer [post]
+func (s *RestHandler) TransferStock(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req model.TransferStockHTTPRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	if err := validatorx.ValidateStruct(&req); err != nil {
+		writeError(w, errors.SetCustomError(constant.ErrInvalidRequest))
+		return
+	}
+	if s.WarehouseApp == nil {
+		writeError(w, errors.SetCustomError(constant.ErrInternal))
+		return
+	}
+	transferReq := &model.TransferStockRequest{
+		ProductID:       req.ProductID,
+		FromWarehouseID: req.FromWarehouseID,
+		ToWarehouseID:   req.ToWarehouseID,
+		Quantity:        req.Quantity,
+	}
+	if err := s.WarehouseApp.TransferStock(ctx, transferReq); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeSuccess(w, map[string]string{"status": "transferred"})
 }

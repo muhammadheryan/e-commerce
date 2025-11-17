@@ -12,6 +12,7 @@ import (
 	orderapp "github.com/muhammadheryan/e-commerce/application/order"
 	productapp "github.com/muhammadheryan/e-commerce/application/product"
 	userapp "github.com/muhammadheryan/e-commerce/application/user"
+	warehouseapp "github.com/muhammadheryan/e-commerce/application/warehouse"
 	"github.com/muhammadheryan/e-commerce/cmd/config"
 	redisclient "github.com/muhammadheryan/e-commerce/cmd/redis"
 	_ "github.com/muhammadheryan/e-commerce/docs"
@@ -38,6 +39,11 @@ import (
 // @in header
 // @name Authorization
 // @description Enter the token with the `Bearer` prefix, e.g: "Bearer <your_token>"
+
+// @securityDefinitions.apikey InternalAPIKey
+// @in header
+// @name Authorization
+// @description Enter the internal API key with the `Bearer` prefix, e.g: "Bearer <your_internal_api_key>"
 func main() {
 	// Load configuration from environment variables
 	cfg := config.Load()
@@ -121,8 +127,9 @@ func main() {
 	UserApp := userapp.NewUserApp(cfg, UserRepo, RedisRepo)
 	ProductApp := productapp.NewProductApp(ProductRepo)
 	OrderApp := orderapp.NewOrderApp(cfg, txRepo, OrderRepo, warehouseRepo, publisher)
+	WarehouseApp := warehouseapp.NewWarehouseApp(txRepo, warehouseRepo)
 
-	httpTransport := transport.NewTransport(UserApp, ProductApp, OrderApp, cfg.InternalAPIKey)
+	httpTransport := transport.NewTransport(UserApp, ProductApp, OrderApp, WarehouseApp, cfg.InternalAPIKey)
 
 	// Create HTTP server
 	server := &http.Server{

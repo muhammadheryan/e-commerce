@@ -14,40 +14,44 @@ const (
 	ErrInvalidPassword
 	ErrInsufficientStock
 	ErrInvalidOrderStatus
+	ErrWarehouseHasReservedStock
 )
 
 var ErrorTypeMessage = map[ErrorType]string{
-	Successful:            "success",
-	ErrInternal:           "error internal",
-	ErrNotFound:           "data not found",
-	ErrInvalidRequest:     "invalid request",
-	ErrUnauthorize:        "unauthorize request",
-	ErrCredentialExists:   "email or phone already exists",
-	ErrInvalidPassword:    "password invalid",
-	ErrInsufficientStock:  "insufficient stock",
-	ErrInvalidOrderStatus: "invalid order status",
+	Successful:                   "success",
+	ErrInternal:                  "error internal",
+	ErrNotFound:                  "data not found",
+	ErrInvalidRequest:            "invalid request",
+	ErrUnauthorize:               "unauthorize request",
+	ErrCredentialExists:          "email or phone already exists",
+	ErrInvalidPassword:           "password invalid",
+	ErrInsufficientStock:         "insufficient stock",
+	ErrInvalidOrderStatus:        "invalid order status",
+	ErrWarehouseHasReservedStock: "warehouse has reserved stock, cannot deactivate",
 }
 
 var ErrorTypeHTTPCode = map[ErrorType]int{
-	Successful:            http.StatusOK,
-	ErrInternal:           http.StatusInternalServerError,
-	ErrNotFound:           http.StatusBadRequest,
-	ErrInvalidRequest:     http.StatusBadRequest,
-	ErrUnauthorize:        http.StatusUnauthorized,
-	ErrCredentialExists:   http.StatusBadRequest,
-	ErrInvalidPassword:    http.StatusBadRequest,
-	ErrInsufficientStock:  http.StatusBadRequest,
-	ErrInvalidOrderStatus: http.StatusBadRequest,
+	Successful:                   http.StatusOK,
+	ErrInternal:                  http.StatusInternalServerError,
+	ErrNotFound:                  http.StatusBadRequest,
+	ErrInvalidRequest:            http.StatusBadRequest,
+	ErrUnauthorize:               http.StatusUnauthorized,
+	ErrCredentialExists:          http.StatusBadRequest,
+	ErrInvalidPassword:           http.StatusBadRequest,
+	ErrInsufficientStock:         http.StatusBadRequest,
+	ErrInvalidOrderStatus:        http.StatusBadRequest,
+	ErrWarehouseHasReservedStock: http.StatusBadRequest,
 }
 
 var ErrorTypeCode = map[ErrorType]string{
-	Successful:            "0000",
-	ErrInternal:           "0001",
-	ErrNotFound:           "0002",
-	ErrInvalidRequest:     "0003",
-	ErrUnauthorize:        "0004",
-	ErrCredentialExists:   "0005",
-	ErrInvalidPassword:    "0006",
-	ErrInsufficientStock:  "0007",
-	ErrInvalidOrderStatus: "0008",
+	Successful:                   "0000",
+	ErrInternal:                  "0001",
+	ErrNotFound:                  "0002",
+	ErrInvalidRequest:            "0003",
+	ErrUnauthorize:               "0004",
+	ErrCredentialExists:          "0005",
+	ErrInvalidPassword:           "0006",
+	ErrInsufficientStock:         "0007",
+	ErrInvalidOrderStatus:        "0008",
+	ErrWarehouseHasReservedStock: "0009",
 }

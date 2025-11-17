@@ -143,7 +143,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 }
 
 func (c *Consumer) callCancelOrderAPI(orderID, userID uint64) error {
-	url := fmt.Sprintf("%s/internal/order/%d/cancel", c.apiURL, orderID)
+	url := fmt.Sprintf("%s/internal/v1/order/%d/cancel", c.apiURL, orderID)
 
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -164,7 +164,7 @@ func (c *Consumer) callCancelOrderAPI(orderID, userID uint64) error {
 
 	body, _ := io.ReadAll(resp.Body)
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 500 {
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
 

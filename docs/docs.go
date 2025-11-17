@@ -15,7 +15,147 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/login": {
+        "/internal/v1/warehouses/transfer": {
+            "post": {
+                "security": [
+                    {
+                        "InternalAPIKey": []
+                    }
+                ],
+                "description": "Transfer stock from one warehouse to another. Only available stock (stock - reserved) can be transferred",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Warehouse"
+                ],
+                "summary": "Transfer stock between warehouses",
+                "parameters": [
+                    {
+                        "description": "Transfer Stock Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TransferStockHTTPRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.CustomError"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/v1/warehouses/{id}/activate": {
+            "patch": {
+                "security": [
+                    {
+                        "InternalAPIKey": []
+                    }
+                ],
+                "description": "Activate a warehouse",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Warehouse"
+                ],
+                "summary": "Activate warehouse",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Warehouse ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.CustomError"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/v1/warehouses/{id}/deactivate": {
+            "patch": {
+                "security": [
+                    {
+                        "InternalAPIKey": []
+                    }
+                ],
+                "description": "Deactivate a warehouse. Cannot deactivate if there's reserved stock",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Warehouse"
+                ],
+                "summary": "Deactivate warehouse",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Warehouse ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.CustomError"
+                        }
+                    }
+                }
+            }
+        },
+        "/public/v1/login": {
             "post": {
                 "description": "Login with email or phone and receive JWT token",
                 "consumes": [
@@ -55,7 +195,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/order": {
+        "/public/v1/order": {
             "post": {
                 "security": [
                     {
@@ -100,7 +240,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/order/{id}/cancel": {
+        "/public/v1/order/{id}/cancel": {
             "post": {
                 "security": [
                     {
@@ -146,7 +286,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/order/{id}/pay": {
+        "/public/v1/order/{id}/pay": {
             "post": {
                 "security": [
                     {
@@ -192,7 +332,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/product": {
+        "/public/v1/product": {
             "get": {
                 "security": [
                     {
@@ -242,7 +382,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/product/{id}": {
+        "/public/v1/product/{id}": {
             "get": {
                 "security": [
                     {
@@ -285,7 +425,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/register": {
+        "/public/v1/register": {
             "post": {
                 "description": "Register a new user",
                 "consumes": [
@@ -500,11 +640,40 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.TransferStockHTTPRequest": {
+            "type": "object",
+            "required": [
+                "from_warehouse_id",
+                "product_id",
+                "quantity",
+                "to_warehouse_id"
+            ],
+            "properties": {
+                "from_warehouse_id": {
+                    "type": "integer"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "to_warehouse_id": {
+                    "type": "integer"
+                }
+            }
         }
     },
     "securityDefinitions": {
         "BearerAuth": {
             "description": "Enter the token with the ` + "`" + `Bearer` + "`" + ` prefix, e.g: \"Bearer \u003cyour_token\u003e\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "InternalAPIKey": {
+            "description": "Enter the internal API key with the ` + "`" + `Bearer` + "`" + ` prefix, e.g: \"Bearer \u003cyour_internal_api_key\u003e\"",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

@@ -115,6 +115,22 @@ definitions:
       name:
         type: string
     type: object
+  model.TransferStockHTTPRequest:
+    properties:
+      from_warehouse_id:
+        type: integer
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      to_warehouse_id:
+        type: integer
+    required:
+    - from_warehouse_id
+    - product_id
+    - quantity
+    - to_warehouse_id
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -122,7 +138,96 @@ info:
   title: E-COMMERCE API
   version: "1.0"
 paths:
-  /login:
+  /internal/v1/warehouses/{id}/activate:
+    patch:
+      consumes:
+      - application/json
+      description: Activate a warehouse
+      parameters:
+      - description: Warehouse ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - InternalAPIKey: []
+      summary: Activate warehouse
+      tags:
+      - Warehouse
+  /internal/v1/warehouses/{id}/deactivate:
+    patch:
+      consumes:
+      - application/json
+      description: Deactivate a warehouse. Cannot deactivate if there's reserved stock
+      parameters:
+      - description: Warehouse ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - InternalAPIKey: []
+      summary: Deactivate warehouse
+      tags:
+      - Warehouse
+  /internal/v1/warehouses/transfer:
+    post:
+      consumes:
+      - application/json
+      description: Transfer stock from one warehouse to another. Only available stock
+        (stock - reserved) can be transferred
+      parameters:
+      - description: Transfer Stock Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.TransferStockHTTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.CustomError'
+      security:
+      - InternalAPIKey: []
+      summary: Transfer stock between warehouses
+      tags:
+      - Warehouse
+  /public/v1/login:
     post:
       consumes:
       - application/json
@@ -148,7 +253,7 @@ paths:
       summary: Login user
       tags:
       - Auth
-  /order:
+  /public/v1/order:
     post:
       consumes:
       - application/json
@@ -176,7 +281,7 @@ paths:
       summary: Create order
       tags:
       - Order
-  /order/{id}/cancel:
+  /public/v1/order/{id}/cancel:
     post:
       consumes:
       - application/json
@@ -205,7 +310,7 @@ paths:
       summary: Cancel order
       tags:
       - Order
-  /order/{id}/pay:
+  /public/v1/order/{id}/pay:
     post:
       consumes:
       - application/json
@@ -234,7 +339,7 @@ paths:
       summary: Pay order
       tags:
       - Order
-  /product:
+  /public/v1/product:
     get:
       consumes:
       - application/json
@@ -266,7 +371,7 @@ paths:
       summary: List products
       tags:
       - Product
-  /product/{id}:
+  /public/v1/product/{id}:
     get:
       consumes:
       - application/json
@@ -293,7 +398,7 @@ paths:
       summary: Get product detail
       tags:
       - Product
-  /register:
+  /public/v1/register:
     post:
       consumes:
       - application/json
@@ -322,6 +427,12 @@ paths:
 securityDefinitions:
   BearerAuth:
     description: 'Enter the token with the `Bearer` prefix, e.g: "Bearer <your_token>"'
+    in: header
+    name: Authorization
+    type: apiKey
+  InternalAPIKey:
+    description: 'Enter the internal API key with the `Bearer` prefix, e.g: "Bearer
+      <your_internal_api_key>"'
     in: header
     name: Authorization
     type: apiKey

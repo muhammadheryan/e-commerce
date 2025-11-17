@@ -47,11 +47,12 @@ func AuthMiddleware(userApp user.UserApp) mux.MiddlewareFunc {
 
 // isPublicPath defines which endpoints are public (no auth required)
 func isPublicPath(path string) bool {
-	if strings.HasPrefix(path, "/swagger/") || strings.HasPrefix(path, "/internal/") {
-		return true
-	}
-	if path == "/login" || path == "/register" {
-		return true
+	allowed := []string{"swagger", "internal", "login", "register"}
+
+	for _, a := range allowed {
+		if strings.Contains(path, a) {
+			return true
+		}
 	}
 
 	return false

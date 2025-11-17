@@ -39,7 +39,7 @@ http://localhost:8080/swagger/index.html
 Dont forget to embed token in protected API via swagger athorize option 
 ```bash
 /public
-Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWI....
+Bearer <data.token from login api>
 
 /internal
 Bearer <INTERNAL_API_KEY from .ENV>

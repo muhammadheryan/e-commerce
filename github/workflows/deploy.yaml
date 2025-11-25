@@ -1,0 +1,34 @@
+name: Deploy via SSH
+
+on:
+  push:
+    branches: ["master"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Upload files to server via SCP
+      uses: appleboy/scp-action@v0.1.5
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        source: "."
+        target: "/home/${{ secrets.SSH_USER }}/apps/myapp"
+        overwrite: true
+
+    - name: SSH into server and restart docker-compose
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd apps/myapp
+          docker compose down
+          docker compose up -d --build
